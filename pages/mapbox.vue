@@ -1,16 +1,13 @@
 <template>
 
-    <!-- <div class="mapboxgl-ctrl-geocoder mapboxgl-ctrl">
-        <input type="text" class="mapboxgl-ctrl-geocoder--input" placeholder="Search" aria-label="Search">
-        <div class="suggestions-wrapper">
-            <ul class="suggestions"></ul>
-        </div>
-        <div class="mapboxgl-ctrl-geocoder--pin-right">
-            <button aria-label="Clear" class="mapboxgl-ctrl-geocoder--button"></button>
-        </div>
-    </div> -->
+    <head>
+        <link rel='stylesheet'
+            href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.3.0/mapbox-gl-draw.css'
+            type='text/css' />
+    </head>
+
     <div>
-        <!-- <select id="layer-change">
+        <select id="layer-change">
             <option selected value="mapbox://styles/mapbox/streets-v11">Dark</option>
             <option value="mapbox://styles/mapbox/outdoors-v11">outdoors</option>
             <option value="mapbox://styles/mapbox/light-v10">light</option>
@@ -25,12 +22,15 @@
             <option value="mapbox://styles/mapbox/navigation-night-v1">
                 navigation-night
             </option>
-        </select> -->
+        </select>
     </div>
     <main class="w-screen h-screen">
         <v-map class="w-full h-full" :options="data.options" @loaded="onMapLoaded">
             <!-- <VLayerMapboxGeojson :sourceId="data.geoJsonSource.id" :source="data.geoJsonSource" layerId="myLayer"
                 :layer="data.geoJsonlayer" /> -->
+            <div class="pre">
+                <pre id="info"></pre>
+            </div>
         </v-map>
     </main>
 </template>
@@ -39,15 +39,18 @@ import mapboxgl from "mapbox-gl";
 import VMap from "v-mapbox";
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
 // function upload() {
 //     console.log("hii");
 // }
+// To get Backend point in frontend.
+
 const data = reactive({
     options: {
         accessToken:
             "pk.eyJ1IjoibWF5dXJ3YWtpa2FyIiwiYSI6ImNsNmdjdGxwbjBiNGMzY282bWh0dng2c2kifQ.y-m4-zQKOeOOnDG5I1u6ng",
         style: "mapbox://styles/mapbox/outdoors-v11",
-        center: [-68.137343, 45.137451],
+        center: [73.856743, 18.52043] as number[],
         zoom: 8,
         maxZoom: 22,
         crossSourceCollisions: false,
@@ -60,50 +63,9 @@ const data = reactive({
         container: 'map'
     } as mapboxgl.MapboxOptions,
     map: {} as mapboxgl.Map,
-    // geoJsonSource: {
-    //     'id': 'maine',
-    //     'type': 'geojson',
-    //     'data': {
-    //         'type': 'Feature',
-    //         'geometry': {
-    //             'type': 'Polygon',
-    //             'coordinates': [
-    //                 [
-    //                     [-67.13734, 45.13745],
-    //                     [-66.96466, 44.8097],
-    //                     [-68.03252, 44.3252],
-    //                     [-69.06, 43.98],
-    //                     [-70.11617, 43.68405],
-    //                     [-70.64573, 43.09008],
-    //                     [-70.75102, 43.08003],
-    //                     [-70.79761, 43.21973],
-    //                     [-70.98176, 43.36789],
-    //                     [-70.94416, 43.46633],
-    //                     [-71.08482, 45.30524],
-    //                     [-70.66002, 45.46022],
-    //                     [-70.30495, 45.91479],
-    //                     [-70.00014, 46.69317],
-    //                     [-69.23708, 47.44777],
-    //                     [-68.90478, 47.18479],
-    //                     [-68.2343, 47.35462],
-    //                     [-67.79035, 47.06624],
-    //                     [-67.79141, 45.70258],
-    //                     [-67.13734, 45.13745]
-    //                 ]
-    //             ]
-    //         }
-    //     }
-    // },
-    // geoJsonlayer: {
-    //     'id': 'myLayer',
-    //     'type': 'fill',
-    //     'source': 'maine', // reference the data source
-    //     'layout': {},
-    //     'paint': {
-    //         'fill-color': 'black', // blue color fill
-    //         'fill-opacity': 0.5
-    //     }
-    // }
+
+
+    // 
 });
 
 async function onMapLoaded(map: mapboxgl.Map) {
@@ -121,12 +83,7 @@ async function onMapLoaded(map: mapboxgl.Map) {
     // ];
 
 
-    // map.addControl(
-    //     new MapboxGeocoder({
-    //     accessToken: mapboxgl.accessToken,
-    //     mapboxgl: mapboxgl
-    //     })
-    //     );
+
 
     data.map = map;
 
@@ -138,7 +95,7 @@ async function onMapLoaded(map: mapboxgl.Map) {
     });
 
     data.map.addControl(geocoder);
-
+    const isMoving = map.isMoving();
     // console.log('on map laoded: ', map);
 
     data.map.addSource('pune', {
@@ -188,7 +145,64 @@ async function onMapLoaded(map: mapboxgl.Map) {
     });
 
 
+    let mapData: any = await $fetch("http://localhost:3001/mapbox/");
+    console.log("map data", mapData);
+    function onMap() {
+        const layerToggle: any = document.getElementById("layer-change");
 
+        layerToggle.addEventListener("change", (event) => {
+            console.log(event);
+            map.setStyle("mapbox://styles/mapbox/" + event.target.value);
+        });
+        mapData.map((ele) => {
+            new mapboxgl.Marker({
+                draggable: true,
+                color: "#" + (Math.random().toString(16) + "21F77E").substring(2, 8),
+            })
+                .setLngLat([ele.lat, ele.lon])
+                .addTo(map);
+        });
+        // add polygon on pune location..........................
+        // map.addSource("mumbai", {
+        //     type: "geojson",
+        //     data: {
+        //         type: "Feature",
+        //         geometry: {
+        //             type: "Polygon",
+        //             coordinates: [
+        //                 [
+        //                     [
+        //                         72.85171508789062,
+        //                         19.08547999705885
+        //                     ],
+        //                     [
+        //                         72.84347534179688,
+        //                         19.02057711096681
+        //                     ],
+        //                     [
+        //                         72.91351318359375,
+        //                         19.073799352002716
+        //                     ],
+        //                     [
+        //                         72.85171508789062,
+        //                         19.08547999705885
+        //                     ]
+        //                 ],
+        //             ],
+        //         },
+        //     },
+        // });
+        // map.addLayer({
+        //     id: "mumbai",
+        //     type: "fill",
+        //     source: "mumbai", // reference the data source
+        //     layout: {},
+        //     paint: {
+        //         "fill-color": " gray", // blue color fill
+        //         "fill-opacity": 1,
+        //     },
+        // });
+    }
     // console.log(map);
     // const marker = new mapboxgl.Marker({
     //     draggable: true,
@@ -246,61 +260,30 @@ async function onMapLoaded(map: mapboxgl.Map) {
     //     }
     // }),
 
+    //draw tool
 
-    // map.on('load', () => {
-    //     // Add a data source containing GeoJSON data.
-    //     map.addSource('maine', {
-    //         'type': 'geojson',
-    //         'data': {
-    //             'type': 'Feature',
-    //             'geometry': {
-    //                 'type': 'Polygon',
-    //                 // These coordinates outline Maine.
-    //                 'coordinates': [
-    //                     [
-    //                         [-67.13734, 45.13745],
-    //                         [-66.96466, 44.8097],
-    //                         [-68.03252, 44.3252],
-    //                         [-69.06, 43.98],
-    //                         [-70.11617, 43.68405],
-    //                         [-70.64573, 43.09008],
-    //                         [-70.75102, 43.08003],
-    //                         [-70.79761, 43.21973],
-    //                         [-70.98176, 43.36789],
-    //                         [-70.94416, 43.46633],
-    //                         [-71.08482, 45.30524],
-    //                         [-70.66002, 45.46022],
-    //                         [-70.30495, 45.91479],
-    //                         [-70.00014, 46.69317],
-    //                         [-69.23708, 47.44777],
-    //                         [-68.90478, 47.18479],
-    //                         [-68.2343, 47.35462],
-    //                         [-67.79035, 47.06624],
-    //                         [-67.79141, 45.70258],
-    //                         [-67.13734, 45.13745]
-    //                     ]
-    //                 ]
-    //             }
-    //         }
-    //     });
+    var Draw = new MapboxDraw();
+    map.addControl(Draw, 'top-right');
 
-    //     // Add a new layer to visualize the polygon.
-    //     map.addLayer({
-    //         'id': 'maine',
-    //         'type': 'fill',
-    //         'source': 'maine', // reference the data source
-    //         'layout': {},
-    //         'paint': {
-    //             'fill-color': 'black', // blue color fill
-    //             'fill-opacity': 0.5
-    //         }
-    //     });
-    // });
+    map.on('mousemove', (e) => {
+        document.getElementById('info').innerHTML =
+            // `e.point` is the x, y coordinates of the `mousemove` event
+            // relative to the top-left corner of the map.
+            JSON.stringify(e.point) +
+            '<br />' +
+            // `e.lngLat` is the longitude, latitude geographical position of the event.
+            JSON.stringify(e.lngLat.wrap());
+    });
 
-
-
-
-
+    map.flyTo({
+        center: [73.8743, 19.2032],
+        zoom: 9,
+        speed: 0.9,
+        curve: 1,
+        easing(t) {
+            return t;
+        },
+    });
 }
 </script>
 <style>
@@ -353,6 +336,16 @@ body {
 
 .w-full {
     width: 100%;
+}
+
+.pre {
+    z-index: 1;
+    top: 0px;
+    left: 600px;
+    position: relative;
+    width: 30%;
+    height: 9%;
+    background-color: white;
 }
 </style>
   
